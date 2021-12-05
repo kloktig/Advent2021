@@ -1,8 +1,11 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Advent2021
 {
@@ -77,32 +80,23 @@ namespace Advent2021
         public void E1()
         { 
             var strings = File.ReadAllLines(Path.Join("Files", "day5.txt"));
-            var lines = strings.Select(Line.Parse).Where(l => l.IsDiagonalLine || l.IsVerticalOrHorizontalLine).ToImmutableList(); 
-     //       Console.WriteLine(string.Join("\n", lines.Select(l => $"{l} Diag:{l.IsDiagonalLine()} VertHor: {l.IsVerticalOrHorizontalLine()}")));
-            var cnt = 0;
-            foreach (var y in Enumerable.Range(0,1000))
-            { 
-                //             Console.Write("\n");
-                Console.Write(y + " ");
-                foreach (var x in Enumerable.Range(0,1000))
+            var lines = strings.Select(Line.Parse).ToImmutableList();
+            var points = (from x in Enumerable.Range(0, 1000) from y in Enumerable.Range(0, 1000) select new Point(x, y)).ToList();
+
+            ConcurrentBag<int> countBag = new ConcurrentBag<int>();
+            ConcurrentBag<int> bag = new ConcurrentBag<int>();
+            Parallel.ForEach(points, point =>
+            {
+                bag.Add(1);
+                if (lines.Count(line => line.isOnLine(point)) > 1)
+                    countBag.Add(1);
+                if (point.Y == 0)
                 {
-                    var point = new Point(x, y);
-                    var count = lines.Count(line => line.isOnLine(point)); 
-       /*             if (count > 0) 
-                        Console.Write(count);
-                    else
-                    {
-                        Console.Write(".");
-                    }
-         */           
-                    if (count < 2) 
-                        continue;
-                    cnt++;
+                    Console.WriteLine($"{bag.Sum()} -> {countBag.Sum()}");
                 }
-            }
-            //Console.Write("\n\n\n");
-            
-            Console.WriteLine($"Total count: {cnt}");
+            });
+        
+            Console.WriteLine($"Total count: {countBag.Sum()}");
         }
     }
 }
