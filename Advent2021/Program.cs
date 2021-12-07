@@ -6,7 +6,7 @@ namespace Advent2021
     {
         static int Main(string[] args)
         {
-            var day = new Day6();
+            var day = new Day7();
             day.E1();
             return 0;
         }
