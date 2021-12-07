@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
@@ -16,10 +17,15 @@ namespace Advent2021
     
     public class Day2
     {
-        public async Task e1()
+        private readonly string[] _movements;
+
+        public Day2()
+        {
+            _movements = File.ReadAllLines(Path.Join("Files", "day2.txt"));
+        }
+        public void E1()
         { 
-            var movements = await File.ReadAllLinesAsync(Path.Join("Files", "day2.txt"));
-            var moves = movements.Select(m =>
+            var moves = _movements.Select(m =>
             {
                 var t = m.Split(" ");
                 return (Enum.Parse<Direction>(t.First()), int.Parse(t[1]));
@@ -39,10 +45,11 @@ namespace Advent2021
             }
             Console.WriteLine($"pos: {pos} => {pos.Item1 * pos.Item2}");
         }
-        public async Task e2()
+        
+        [Benchmark]
+        public void E2()
         { 
-            var movements = await File.ReadAllLinesAsync(Path.Join("Files", "day2.txt"));
-            var moves = movements.Select(m =>
+            var moves = _movements.Select(m =>
             {
                 var t = m.Split(" ");
                 return (Enum.Parse<Direction>(t.First()), int.Parse(t[1]));
@@ -60,7 +67,7 @@ namespace Advent2021
                     _ => throw new ArgumentOutOfRangeException()
                 };
             }
-            Console.WriteLine($"pos: {pos} => {pos.Item1 * pos.Item2}");
+           // Console.WriteLine($"pos: {pos} => {pos.Item1 * pos.Item2}");
         }
 
         

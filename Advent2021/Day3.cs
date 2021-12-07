@@ -3,13 +3,17 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Net.Mime;
 using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
     public class Day3
     {
+        private ImmutableList<string> _bitsStringsMax;
+        private ImmutableList<string> _bitsStringsMin;
+        private readonly IEnumerable<(char c, int i)> _idx;
+
         private record CountRecord(int Ones, int Zeros);
 
         public async Task E1()
@@ -33,25 +37,29 @@ namespace Advent2021
             Console.WriteLine($"Gamma: {gamma}, Epsilon: {epsilon} => {epsilon * gamma}");
         }
         
+        [Benchmark]
         public void E2()
         { 
-            var bitsStringsMax = File.ReadAllLines(Path.Join("Files", "day3.txt")).ToImmutableList();
-            var bitsStringsMin = bitsStringsMax.ToImmutableList();
-            var idx = bitsStringsMax.First().ToImmutableList().Select((c, i) => (c, i));
-            foreach (var (_, index) in idx)
+            foreach (var (_, index) in _idx)
             {
-                bitsStringsMax = E2(bitsStringsMax, index, true);
-                bitsStringsMin = E2(bitsStringsMin, index, false);
+                _bitsStringsMax = E2(_bitsStringsMax, index, true);
+                _bitsStringsMin = E2(_bitsStringsMin, index, false);
             }
 
-            var prod = AsInt(bitsStringsMin.First()) * AsInt(bitsStringsMax.First());
-                
-            Console.WriteLine("O2  " +  AsInt(bitsStringsMax.First()));
-            Console.WriteLine("CO2 " + AsInt(bitsStringsMin.First()));
-            Console.WriteLine("Sum " +  prod);
-
+            var o2 = AsInt(_bitsStringsMax.First());
+            var co2 = AsInt(_bitsStringsMin.First());
+            var prod = co2 * o2;
+            
+            Console.WriteLine($"O2:{o2}, CO2: {co2} => {prod}");
         }
-        
+
+        public Day3()
+        {
+            _bitsStringsMax = File.ReadAllLines(Path.Join("Files", "day3.txt")).ToImmutableList();
+            _bitsStringsMin = _bitsStringsMax.ToImmutableList();
+            _idx = _bitsStringsMax.First().ToImmutableList().Select((c, i) => (c, i));
+        }
+
         public ImmutableList<string> E2(ImmutableList<string> bitsStrings, int index, bool max)
         {
             if (bitsStrings.Count == 1)
@@ -59,9 +67,7 @@ namespace Advent2021
                 return bitsStrings;
             }
             
-           // Console.WriteLine(string.Join(",", bitsStrings));
-            
-            var counts = bitsStrings.FirstOrDefault()?.Select(b => new CountRecord(0, 0)).ToList();
+            var counts = bitsStrings.First().Select(b => new CountRecord(0, 0)).ToList();
             
             foreach (var bitStr in bitsStrings)
             {
@@ -72,7 +78,7 @@ namespace Advent2021
 
             var comp = max ? GetMost(counts[index]) : GetLeast(counts[index]);
             
-            //Console.WriteLine("comp " + comp + " getMax? " + max + " counts " +counts[index] + " index: " + index);
+            // Console.WriteLine("comp " + comp + " getMax? " + max + " counts " +counts[index] + " index: " + index);
             
             return bitsStrings.Where(b => b[index] == comp).ToImmutableList();
         }

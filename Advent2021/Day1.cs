@@ -4,17 +4,23 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
     public class Day1
     {
-        public async Task e1()
+        private readonly IList<int> _numbers;
+
+        public Day1()
         {
-            var numbers = await File.ReadAllLinesAsync(Path.Join("Files", "day1.txt"));
+            _numbers = File.ReadAllLines(Path.Join("Files", "day1.txt")).Select(int.Parse).ToImmutableList();
+        }
+        public void E1()
+        {
             int previous = 0;
             int count = 0;
-            foreach (var number in numbers.Select(int.Parse))
+            foreach (var number in _numbers)
             {
                 if (number > previous)
                 {
@@ -24,14 +30,13 @@ namespace Advent2021
                 previous = number;
             }
 
-            Console.WriteLine($"Total: {numbers.Length}. Increase: {count - 1}");
+            Console.WriteLine($"Total: {_numbers.Count()}. Increase: {count - 1}");
         }
 
-        static async Task e2()
+        [Benchmark]
+        public void E2()
         {
-            var numbers = (await File.ReadAllLinesAsync(Path.Join("Files", "day1.txt"))).Select(int.Parse)
-                .ToImmutableList();
-            var inFilter = numbers.Take(3).ToImmutableList();
+            var inFilter = _numbers.Take(3).ToImmutableList();
             var filt = new Queue<int>();
             var count = 0;
 
@@ -40,7 +45,7 @@ namespace Advent2021
                 filt.Enqueue(n);
             }
 
-            foreach (var number in numbers.Skip(3).Take(numbers.Count - 3))
+            foreach (var number in _numbers.Skip(3).Take(_numbers.Count - 3))
             {
                 var old = filt.Dequeue();
                 if (number > old)
@@ -51,7 +56,7 @@ namespace Advent2021
                 filt.Enqueue(number);
             }
 
-            Console.WriteLine($"Total: {numbers}. Increase: {count}");
+            Console.WriteLine($"Increase: {count}");
         }
     }
 }

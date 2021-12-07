@@ -1,13 +1,12 @@
-﻿using System.Threading.Tasks;
+﻿using BenchmarkDotNet.Running;
 
 namespace Advent2021
 {
     class Program
     {
-        static int Main(string[] args)
+        static int Main()
         {
-            var day = new Day7();
-            day.E1();
+            BenchmarkRunner.Run<Day1>();
             return 0;
         }
         

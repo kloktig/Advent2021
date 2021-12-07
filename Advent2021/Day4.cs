@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
@@ -75,21 +76,15 @@ namespace Advent2021
                 return !boards.Any(b => b.AllOK(acc.ToImmutableList()));
             }).ToImmutableList();
             
-            Console.WriteLine(string.Join(", ", acc));
-            
             var board = boards.First(b => b.AllOK(acc.ToImmutableList()));
-           // Console.WriteLine(board);
-
             var unmarked = board.Unmarked(acc.ToImmutableList());
-            Console.WriteLine("unmarked " +  unmarked);
-
             var lastNum = acc.ToImmutableList().Last();
-            Console.WriteLine("lastNum " +  lastNum);
-
             var result = lastNum * unmarked;
+            
             Console.WriteLine("Result " +  result);
         }
         
+        [Benchmark]
         public void E2()
         { 
             var lines = File.ReadAllLines(Path.Join("Files", "day4.txt"));
@@ -123,22 +118,14 @@ namespace Advent2021
                     break;
                 }
             }
-            Console.WriteLine(string.Join(", ", last));
-            
             var board = boards.First(b => !b.AllOK(list.ToImmutableList()));
-            Console.WriteLine(board);
 
             var l = list.ToImmutableList().Add(last);
 
             var unmarked = board.Unmarked(l.ToImmutableList());
-            Console.WriteLine("unmarked " +  unmarked);
-
             var lastNum = l.ToImmutableList().Last();
-            Console.WriteLine("lastNum " +  lastNum);
-
             var result = lastNum * unmarked;
-            Console.WriteLine("Result " +  result)
-            ;
+            Console.WriteLine(result);
         }
     }
 }

@@ -4,11 +4,14 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
     public class Day5
     {
+        private readonly ImmutableList<Line> _lines;
+
         record Point(int X, int Y)
         {
             public static Point Parse(string str)
@@ -59,21 +62,22 @@ namespace Advent2021
             }
         }
 
-        public void E1()
-        { 
+        public Day5()
+        {
             var strings = File.ReadAllLines(Path.Join("Files", "day5.txt"));
-            var lines = strings.Select(Line.Parse).ToImmutableList();
-            
-            var watch = Stopwatch.StartNew();
-            
-            var board = new Board(1000, 1000);
+            _lines = strings.Select(Line.Parse).ToImmutableList();
+        }
 
-            foreach (var line in lines)
+        [Benchmark]
+        public void E1()
+        {
+            var board = new Board(1000, 1000);
+            foreach (var line in _lines)
             {
                 board.Add(line);
             }
-            var val = string.Join(",", board.Sum());
-            Console.WriteLine($"Total count: {val} in {watch.Elapsed}");
+
+            Console.WriteLine(board.Sum());
         }
     }
 }
