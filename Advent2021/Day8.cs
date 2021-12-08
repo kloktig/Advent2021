@@ -31,34 +31,21 @@ namespace Advent2021
             Console.WriteLine($"8: {digits.Count(d => d == 8)}");
             Console.WriteLine($"8: {digits.Count(d => new[] {1, 4, 7, 8}.Contains(d))}");
         }
-
         
-        private record Display(ImmutableList<ImmutableHashSet<char>> Patterns,
-            ImmutableList<ImmutableHashSet<char>> Outputs)
+        private record Display
         {
-            public static Display Parse(string line)
+            private readonly ImmutableList<ImmutableHashSet<char>> _outputs;
+            private readonly List<ImmutableHashSet<char>> _digits;
+
+            public Display(ImmutableList<ImmutableHashSet<char>> patterns, ImmutableList<ImmutableHashSet<char>> outputs)
             {
-                var spl = line.Split("|").Select(s => s.Trim()).ToImmutableList();
-                var rand = spl[0].Split(" ").Select(s => s.ToImmutableHashSet()).ToImmutableList();
-                var solution = spl[1].Split(" ").Select(s => s.ToImmutableHashSet()).ToImmutableList();
-                return new Display(rand, solution);
-            }
-        }
+                _outputs = outputs;
+                var num1 = patterns.First(r => r.Count == 2);
+                var num7 = patterns.First(r => r.Count == 3);
+                var num4 = patterns.First(r => r.Count == 4);
+                var num8 = patterns.First(r => r.Count == 7);
 
-        public void E2()
-        {
-            var lines = File.ReadAllLines(Path.Join("Files", "day8.txt")).ToImmutableList();
-            var data = lines.Select(Display.Parse).ToImmutableList();
-
-            var acc = 0;
-            foreach (var display in data)
-            {
-                var num1 = display.Patterns.First(r => r.Count == 2);
-                var num7 = display.Patterns.First(r => r.Count == 3);
-                var num4 = display.Patterns.First(r => r.Count == 4);
-                var num8 = display.Patterns.First(r => r.Count == 7);
-
-                var candidate235 = display.Patterns.Where(r => r.Count == 5).ToImmutableList();
+                var candidate235 = patterns.Where(r => r.Count == 5).ToImmutableList();
                 var num3 = candidate235.Find(n => (n.Except(num7)).Count == 2);
                 var num5 = candidate235
                     .Where(c => c != num3)
@@ -66,20 +53,37 @@ namespace Advent2021
                     .Find(n => (n.Except(num4)).Count == 2);
                 var num2 = candidate235.First(n => new[] {num3, num5}.Contains(n) == false);
 
-                var candidate069 = display.Patterns.Where(r => r.Count == 6).ToImmutableList();
+                var candidate069 = patterns.Where(r => r.Count == 6).ToImmutableList();
                 var num6 = candidate069.Find(n => (n.Except(num1)).Count == 5);
                 var num9 = candidate069
                     .Where(c => c != num6)
                     .ToImmutableList()
                     .Find(n => (n.Except(num4)).Count == 2);
                 var num0 = candidate069.First(n => new[] {num9, num6}.Contains(n) == false);
+                
+                _digits = new List<ImmutableHashSet<char>> {num0, num1, num2, num3, num4, num5, num6, num7, num8, num9};
 
-                List<ImmutableHashSet<char>> digits = new List<ImmutableHashSet<char>> {num0, num1, num2, num3, num4, num5, num6, num7, num8, num9};
-
-                var solution = display.Outputs.Select(n => digits.FindIndex(d => d.SetEquals(n)));
-                acc += int.Parse(string.Join("", solution));
             }
+            public static Display Parse(string line)
+            {
+                var spl = line.Split("|").Select(s => s.Trim()).ToImmutableList();
+                return new Display(
+                    spl[0].Split(" ").Select(s => s.ToImmutableHashSet()).ToImmutableList(),
+                    spl[1].Split(" ").Select(s => s.ToImmutableHashSet()).ToImmutableList()
+                );
+            }
+            
+            public int GetOutput()
+            {
+                var outputDigits = _outputs.Select(n => _digits.FindIndex(d => d.SetEquals(n)));
+                return int.Parse(string.Join("", outputDigits));
+            }
+        }
 
+        public void E2()
+        {
+            var data = File.ReadAllLines(Path.Join("Files", "day8.txt")).Select(Display.Parse).ToImmutableList();
+            var acc = data.Sum(display => display.GetOutput());
             Console.WriteLine(acc);
         }
     }
