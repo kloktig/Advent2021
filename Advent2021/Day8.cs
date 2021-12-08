@@ -32,98 +32,54 @@ namespace Advent2021
             Console.WriteLine($"8: {digits.Count(d => new[] {1, 4, 7, 8}.Contains(d))}");
         }
 
-        private record Number
+        
+        private record Display(ImmutableList<ImmutableHashSet<char>> Patterns,
+            ImmutableList<ImmutableHashSet<char>> Outputs)
         {
-            private readonly Dictionary<int, List<int>> _nums = new()
-            {
-                {2, new List<int> {1}},
-                {3, new List<int> {7}},
-                {4, new List<int> {4}},
-                {5, new List<int> {2, 3, 5}},
-                {6, new List<int> {0, 6, 9}},
-                {7, new List<int> {8}},
-            };
-
-            public bool IsCandidate(int num) => Candidates.Contains(num);
-
-            public Number(ImmutableHashSet<char> num)
-            {
-                Set = num;
-                Raw = string.Join("", num.ToList());
-                var ok = _nums.TryGetValue(num.Count, out var candidates);
-                Candidates = ok ? candidates : new List<int>();
-            }
-
-            public Number(string num)
-            {
-                Set = num.ToImmutableHashSet();
-                Raw = num;
-                Candidates = _nums[Set.Count];
-            }
-
-            public List<int> Candidates { get; }
-
-
-            public string Raw { get; }
-
-            public ImmutableHashSet<char> Set { get; }
-
-            public static Number operator -(Number n1, Number n2)
-            {
-                return new Number(n1.Set.Except(n2.Set));
-            }
-
-            public override string ToString()
-            {
-                return $"{Raw} => {Raw.Length} --> {string.Join(",", Candidates)}";
-            }
-        }
-
- 
-        private record Element(ImmutableList<Number> Random, ImmutableList<Number> Solution)
-        {
-            public static Element Parse(string line)
+            public static Display Parse(string line)
             {
                 var spl = line.Split("|").Select(s => s.Trim()).ToImmutableList();
-                var rand = spl[0].Split(" ").Select(s => new Number(s)).ToImmutableList();
-                var solution = spl[1].Split(" ").Select(s => new Number(s)).ToImmutableList();
-                return new Element(rand, solution);
+                var rand = spl[0].Split(" ").Select(s => s.ToImmutableHashSet()).ToImmutableList();
+                var solution = spl[1].Split(" ").Select(s => s.ToImmutableHashSet()).ToImmutableList();
+                return new Display(rand, solution);
             }
-
-            public Number GetFromCandidate(int num) => Random.First(n => n.IsCandidate(num));
-            public ImmutableList<Number> GetAllFromCandidate(int num) => Random.Where(n => n.IsCandidate(num)).ToImmutableList();
         }
 
         public void E2()
-        { 
+        {
             var lines = File.ReadAllLines(Path.Join("Files", "day8.txt")).ToImmutableList();
-            // var lines = new List<string> {"acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf"};
-            var data = lines.Select(Element.Parse).ToImmutableList();
+            var data = lines.Select(Display.Parse).ToImmutableList();
 
             var acc = 0;
-            foreach (var element in data)
+            foreach (var display in data)
             {
-               var num1 = element.GetFromCandidate(1) ;
-               var num7 = element.GetFromCandidate(7) ;
-               var num4 = element.GetFromCandidate(4) ;
-               var num8 = element.GetFromCandidate(8) ;
-               var num3 = element.GetAllFromCandidate(3).Find(n => (n - num7).Set.Count == 2);
-               var num5 = element.GetAllFromCandidate(5).Where(c => c.Raw != num3.Raw).ToImmutableList().Find(n => (n - num4).Set.Count == 2);
-               var num2 = element.GetAllFromCandidate(2)
-                   .First(n => new[] {num3.Raw, num5.Raw}.Contains(n.Raw) == false);
-               var num6 = element.GetAllFromCandidate(6).Find(n => (n - num1).Set.Count == 5);
-               var num9 = element.GetAllFromCandidate(9).Where(c => c.Raw != num6.Raw).ToImmutableList()
-                   .Find(n => (n - num4).Set.Count == 2);
-               var num0 = element.GetAllFromCandidate(0)
-                   .First(n => new[] {num9.Raw, num6.Raw}.Contains(n.Raw) == false);
+                var num1 = display.Patterns.First(r => r.Count == 2);
+                var num7 = display.Patterns.First(r => r.Count == 3);
+                var num4 = display.Patterns.First(r => r.Count == 4);
+                var num8 = display.Patterns.First(r => r.Count == 7);
 
-               List<ImmutableHashSet<char>> digits =
-                   new List<ImmutableHashSet<char>>(){num0.Set, num1.Set, num2.Set, num3.Set, num4.Set, num5.Set, num6.Set, num7.Set, num8.Set, num9.Set};
+                var candidate235 = display.Patterns.Where(r => r.Count == 5).ToImmutableList();
+                var num3 = candidate235.Find(n => (n.Except(num7)).Count == 2);
+                var num5 = candidate235
+                    .Where(c => c != num3)
+                    .ToImmutableList()
+                    .Find(n => (n.Except(num4)).Count == 2);
+                var num2 = candidate235.First(n => new[] {num3, num5}.Contains(n) == false);
 
-               var solution = element.Solution.Select(n => digits.FindIndex(d => d.SetEquals(n.Set)));
-              acc += int.Parse(string.Join("", solution));
+                var candidate069 = display.Patterns.Where(r => r.Count == 6).ToImmutableList();
+                var num6 = candidate069.Find(n => (n.Except(num1)).Count == 5);
+                var num9 = candidate069
+                    .Where(c => c != num6)
+                    .ToImmutableList()
+                    .Find(n => (n.Except(num4)).Count == 2);
+                var num0 = candidate069.First(n => new[] {num9, num6}.Contains(n) == false);
+
+                List<ImmutableHashSet<char>> digits = new List<ImmutableHashSet<char>> {num0, num1, num2, num3, num4, num5, num6, num7, num8, num9};
+
+                var solution = display.Outputs.Select(n => digits.FindIndex(d => d.SetEquals(n)));
+                acc += int.Parse(string.Join("", solution));
             }
-            
+
             Console.WriteLine(acc);
         }
     }
