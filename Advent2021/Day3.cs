@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,9 +17,9 @@ namespace Advent2021
 
         private record CountRecord(int Ones, int Zeros);
 
-        public async Task E1()
+        public void E1()
         { 
-            var bitsStrings = await File.ReadAllLinesAsync(Path.Join("Files", "day3.txt"));
+            var bitsStrings = File.ReadAllLines(Path.Join("Files", "day3.txt"));
             var counts = bitsStrings.First().Select(b => new CountRecord(0, 0)).ToList();
             
             foreach (var bitStr in bitsStrings)
@@ -31,10 +32,11 @@ namespace Advent2021
                 }
             }
 
-            var epsilon = Convert.ToInt64(string.Join("",counts.Select(GetEpsilon)), 2);
-            var gamma = Convert.ToInt64(string.Join("",counts.Select(GetGamma)), 2);
+            var epsilon = Convert.ToInt64(string.Join("",counts.Select(GetLeast)), 2);
+            var gamma = Convert.ToInt64(string.Join("",counts.Select(GetMost)), 2);
             
             Console.WriteLine($"Gamma: {gamma}, Epsilon: {epsilon} => {epsilon * gamma}");
+            Debug.Assert(epsilon * gamma == 741950);
         }
         
         [Benchmark]
@@ -51,6 +53,7 @@ namespace Advent2021
             var prod = co2 * o2;
             
             Console.WriteLine($"O2:{o2}, CO2: {co2} => {prod}");
+            Debug.Assert(prod == 903810);
         }
 
         public Day3()
@@ -83,9 +86,6 @@ namespace Advent2021
             return bitsStrings.Where(b => b[index] == comp).ToImmutableList();
         }
         
-        private char GetGamma(CountRecord countRecord) => countRecord.Ones > countRecord.Zeros ? '1' : '0';
-        private char GetEpsilon(CountRecord countRecord) => countRecord.Ones > countRecord.Zeros ? '0' : '1';
-
         private char GetLeast(CountRecord countRecord) => countRecord.Ones >= countRecord.Zeros ? '0' : '1';
         private char GetMost(CountRecord countRecord) => countRecord.Zeros > countRecord.Ones ? '0' : '1';
         
