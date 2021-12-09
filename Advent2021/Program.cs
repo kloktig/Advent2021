@@ -6,8 +6,8 @@ namespace Advent2021
     {
         static int Main()
         {
-            //BenchmarkRunner.Run<Day1>();
-            new Day8().E2();
+            BenchmarkRunner.Run<Day9>();
+//            new Day9().E1();
             return 0;
         }
         
