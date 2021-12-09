@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
@@ -77,44 +79,45 @@ namespace Advent2021
         {
             var data = File.ReadAllLines(Path.Join("Files", "day9.txt"));
             var board = new Board(data);
-            var allBasins = new List<HashSet<Point>>();
+            var allBasins = new ConcurrentBag<HashSet<Point>>();
 
-            foreach (var point in board.Lows)
-            {
-                var traverse = true;
-                var currents = new HashSet<Point> {point};
-                while (traverse)
+            Parallel.ForEach(board.Lows, point =>
                 {
-                    HashSet<Point> allToAdd = new HashSet<Point>();
-                    foreach (var current in currents)
+                    var traverse = true;
+                    var currents = new HashSet<Point> {point};
+                    while (traverse)
                     {
-                        var dirs = new List<Point>
+                        var allToAdd = new List<Point>();
+                        foreach (var current in currents)
                         {
-                            new(current.X - 1, current.Y),
-                            new(current.X + 1, current.Y),
-                            new(current.X, current.Y - 1),
-                            new(current.X, current.Y + 1)
-                        };
+                            var dirs = new List<Point>
+                            {
+                                new(current.X - 1, current.Y),
+                                new(current.X + 1, current.Y),
+                                new(current.X, current.Y - 1),
+                                new(current.X, current.Y + 1)
+                            }.Where(p =>
+                                board.IsOnBoard(p) &&
+                                !currents.Contains(p) &&
+                                !board.Highs.Contains(p)
+                                );
 
-                        foreach (var addThis in dirs.Where(p =>
-                                     board.IsOnBoard(p) &&
-                                     !currents.Contains(p) &&
-                                     !board.Highs.Contains(p)
-                                 ))
+                            foreach (var addThis in dirs)
+                            {
+                                allToAdd.Add(addThis);
+                            }
+                        }
+
+                        traverse = allToAdd.Count > 0;
+                        foreach (var toAdd in allToAdd)
                         {
-                            allToAdd.Add(addThis);
+                            currents.Add(toAdd);
                         }
                     }
 
-                    traverse = allToAdd.Count > 0;
-                    foreach (var toAdd in allToAdd)
-                    {
-                        currents.Add(toAdd);
-                    }
+                    allBasins.Add(currents);
                 }
-
-                allBasins.Add(currents);
-            }
+            );
 
             var res = allBasins.Select(c => c.Count).ToImmutableList();
             var resVals = res.OrderByDescending(r => r).Take(3).ToImmutableList();
