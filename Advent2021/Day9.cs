@@ -10,17 +10,28 @@ namespace Advent2021
 {
     public class Day9
     {
+        record Point(int X, int Y);
+
         record Board
         {
             public readonly ImmutableList<ImmutableList<int>> Values;
-            public readonly ImmutableList<(int x, int y)> Lows;
-            public readonly ImmutableList<(int x, int y)> Highs;
+            public readonly ImmutableList<Point> Lows;
+            public readonly ImmutableList<Point> Highs;
+
+            int yMax;
+            int xMax;
+
+            public bool IsOnBoard(Point p) => p.X >= 0 && p.X < xMax && p.Y >= 0 && p.Y < yMax;
 
             public Board(IEnumerable<string> linesInFile)
             {
-                Values = linesInFile.Select(line => line.ToList().Select(c => c - '0').ToImmutableList()).ToImmutableList(); 
+                Values = linesInFile.Select(line => line.ToList().Select(c => c - '0').ToImmutableList())
+                    .ToImmutableList();
                 Lows = GetExtremes(false).ToImmutableList();
                 Highs = GetExtremes(true).ToImmutableList();
+
+                yMax = Values.Count;
+                xMax = Values[0].Count;
             }
 
             public override string ToString()
@@ -28,29 +39,33 @@ namespace Advent2021
                 return Values.Aggregate("", (current, value) => current + (string.Join("", value) + "\n"));
             }
 
-            private bool IsLow(int x, int y)
+            private bool IsLow(Point p)
             {
-                var x1 = x + 1 == Values[0].Count ? 10 : Values[y][x + 1];
-                var xm1 = x == 0 ? 10 : Values[y][x - 1];
-                var y1 = y + 1 == Values.Count ? 10 : Values[y + 1][x];
-                var ym1 = y == 0 ? 10 : Values[y - 1][x];
+                var x1 = p.X + 1 == Values[0].Count ? 10 : Values[p.Y][p.X + 1];
+                var xm1 = p.X == 0 ? 10 : Values[p.Y][p.X - 1];
+                var y1 = p.Y + 1 == Values.Count ? 10 : Values[p.Y + 1][p.X];
+                var ym1 = p.Y == 0 ? 10 : Values[p.Y - 1][p.X];
 
-                return Values[y][x] < x1 && Values[y][x] < xm1 && Values[y][x] < ym1 && Values[y][x] < y1;
+                return Values[p.Y][p.X] < x1 && 
+                       Values[p.Y][p.X] < xm1 &&
+                       Values[p.Y][p.X] < ym1 &&
+                       Values[p.Y][p.X] < y1;
             }
 
-            private bool IsHigh(int x, int y) => Values[y][x] == 9;
+            private bool IsHigh(Point p) => Values[p.Y][p.X] == 9;
 
-            private IEnumerable<(int x, int y)> GetExtremes(bool high)
+            private IEnumerable<Point> GetExtremes(bool high)
             {
-                Func<int, int, bool> fun = high ? IsHigh : IsLow;
+                Func<Point, bool> fun = high ? IsHigh : IsLow;
 
                 for (int y = 0; y < Values.Count; y++)
                 {
                     for (int x = 0; x < Values[0].Count; x++)
                     {
-                        if (fun(x, y))
+                        var point = new Point(x, y);
+                        if (fun(point))
                         {
-                            yield return (x, y);
+                            yield return point;
                         }
                     }
                 }
@@ -62,35 +77,30 @@ namespace Advent2021
         {
             var data = File.ReadAllLines(Path.Join("Files", "day9.txt"));
             var board = new Board(data);
-            var allBasins = new List<HashSet<(int, int)>>();
+            var allBasins = new List<HashSet<Point>>();
 
-            var yMax = board.Values.Count;
-            var xMax = board.Values[0].Count;
-
-            foreach (var (x, y) in board.Lows)
+            foreach (var point in board.Lows)
             {
                 var traverse = true;
-                var currents = new HashSet<(int x, int y)> {(x, y)};
+                var currents = new HashSet<Point> {point};
                 while (traverse)
                 {
-                    HashSet<(int x, int y)> allToAdd = new HashSet<(int x, int y)>();
+                    HashSet<Point> allToAdd = new HashSet<Point>();
                     foreach (var current in currents)
                     {
-                        var dirs = new List<(int x, int y)>
+                        var dirs = new List<Point>
                         {
-                            (current.x - 1, current.y),
-                            (current.x + 1, current.y),
-                            (current.x, current.y - 1),
-                            (current.x, current.y + 1)
+                            new(current.X - 1, current.Y),
+                            new(current.X + 1, current.Y),
+                            new(current.X, current.Y - 1),
+                            new(current.X, current.Y + 1)
                         };
-                        foreach (var addThis in dirs.Where(d =>
-                                     d.x >= 0 &&
-                                     d.x < xMax &&
-                                     d.y >= 0 &&
-                                     d.y < yMax &&
-                                     !board.Highs.Contains(d) &&
-                                     !currents.Contains(d))
-                                )
+
+                        foreach (var addThis in dirs.Where(p =>
+                                     board.IsOnBoard(p) &&
+                                     !currents.Contains(p) &&
+                                     !board.Highs.Contains(p)
+                                 ))
                         {
                             allToAdd.Add(addThis);
                         }
