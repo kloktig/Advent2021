@@ -13,16 +13,24 @@ namespace Advent2021
 
         public void E1()
         {
-            Console.WriteLine(_lines.Select(s => s.ToStr("")).ToStr("\n"));
             var open = new Dictionary<char, char>
             {
-                {'(' , ')'}, 
-                {'[', ']'}, 
-                {'{', '}'}, 
+                {'(', ')'},
+                {'[', ']'},
+                {'{', '}'},
                 {'<', '>'}
             };
+            
+            var scores = new Dictionary<char, int>
+            {
+                {')', 1},
+                {']', 2},
+                {'}', 3},
+                {'>', 4}
+            };
 
-            var total = 0;
+            var errorTotal = 0;
+            var score = new List<long>();
             foreach (var line in _lines)
             {
                 var stack = new Stack<char>();
@@ -33,7 +41,8 @@ namespace Advent2021
                         if (open.ContainsKey(c))
                         {
                             stack.Push(open[c]);
-                        } else if (open.Values.Contains(c))
+                        }
+                        else if (open.Values.Contains(c))
                         {
                             var val = stack.Pop();
                             if (val != c)
@@ -47,14 +56,25 @@ namespace Advent2021
                         }
                     }
 
+                    var tempScore = 0L;
+                    foreach (var c in stack.ToImmutableList())
+                    {
+                        tempScore = (tempScore * 5);
+                        tempScore += scores[c];
+                    }
+                    
+                    score.Add(tempScore);
                 }
                 catch (ParseException e)
                 {
-                    total += e.Point;
-                    Console.WriteLine(e);
+                    errorTotal += e.Point;
                 }
             }
-            Console.WriteLine($"Total: {total}");
+
+            Console.WriteLine($"Complete List: {score.OrderByDescending(s => s).ToStr()}");
+            Console.WriteLine($"Complete: {score.OrderByDescending(s => s).ToImmutableList()[score.Count/2]}");
+
+            Console.WriteLine($"Error: {errorTotal}");
         }
     }
 
@@ -69,11 +89,11 @@ namespace Advent2021
             {'}', 1197},
             {'>', 25137},
         };
-            
-        public ParseException(char expect, char actual) : base($"Expected '{expect}', but found '{actual}' instead. Points {Points[actual]}")
+
+        public ParseException(char expect, char actual) : base(
+            $"Expected '{expect}', but found '{actual}' instead. Points {Points[actual]}")
         {
             Point = Points[actual];
         }
-        
     }
 }
