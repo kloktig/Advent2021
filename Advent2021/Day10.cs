@@ -1,94 +1,62 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
     public class Day10
     {
-        private readonly ImmutableList<ImmutableList<char>> _lines = File
-            .ReadAllLines(Path.Join("Files", "day10.txt")).Select(s => s.ToImmutableList()).ToImmutableList();
+        private readonly ImmutableList<ImmutableList<char>> _lines =
+            File.ReadAllLines(Path.Join("Files", "day10.txt"))
+                .Select(s => s.ToImmutableList()).ToImmutableList();
 
+        readonly Dictionary<char, char> _open = new() {{'(', ')'}, {'[', ']'}, {'{', '}'}, {'<', '>'}};
+        readonly Dictionary<char, int> _scores = new() {{')', 1}, {']', 2}, {'}', 3}, {'>', 4}};
+
+        [Benchmark]
         public void E1()
         {
-            var open = new Dictionary<char, char>
-            {
-                {'(', ')'},
-                {'[', ']'},
-                {'{', '}'},
-                {'<', '>'}
-            };
-            
-            var scores = new Dictionary<char, int>
-            {
-                {')', 1},
-                {']', 2},
-                {'}', 3},
-                {'>', 4}
-            };
+            var errorTotal = new ConcurrentBag<long>();
+            var score = new ConcurrentBag<long>();
 
-            var errorTotal = 0;
-            var score = new List<long>();
-            foreach (var line in _lines)
+            Parallel.ForEach(_lines, line =>
             {
                 var stack = new Stack<char>();
                 try
                 {
                     foreach (var c in line)
                     {
-                        if (open.ContainsKey(c))
-                        {
-                            stack.Push(open[c]);
-                        }
-                        else if (open.Values.Contains(c))
-                        {
-                            var val = stack.Pop();
-                            if (val != c)
-                            {
-                                throw new ParseException(val, c);
-                            }
-                        }
-                        else
-                        {
-                            throw new Exception("Not sure: " + line + " char " + c);
-                        }
+                        if (_open.ContainsKey(c)) 
+                            stack.Push(_open[c]);
+                        else if (_open.ContainsValue(c) && stack.TryPop(out var stackChar) && stackChar != c) 
+                            throw new ParseException(stackChar, c);
                     }
 
-                    var tempScore = 0L;
-                    foreach (var c in stack.ToImmutableList())
-                    {
-                        tempScore = (tempScore * 5);
-                        tempScore += scores[c];
-                    }
-                    
+                    var tempScore = stack.Aggregate(0L, (current, c) => current * 5 + _scores[c]);
                     score.Add(tempScore);
                 }
                 catch (ParseException e)
                 {
-                    errorTotal += e.Point;
+                    errorTotal.Add(e.Point);
                 }
-            }
+            });
 
-            Console.WriteLine($"Complete List: {score.OrderByDescending(s => s).ToStr()}");
-            Console.WriteLine($"Complete: {score.OrderByDescending(s => s).ToImmutableList()[score.Count/2]}");
-
-            Console.WriteLine($"Error: {errorTotal}");
+            var result = score.OrderByDescending(s => s).ToImmutableList()[score.Count / 2];
+            Debug.Assert(1605968119 == result);
+            Debug.Assert(392043 == errorTotal.Sum());
         }
     }
 
     class ParseException : Exception
     {
         public readonly int Point;
-
-        private static readonly Dictionary<char, int> Points = new()
-        {
-            {')', 3},
-            {']', 57},
-            {'}', 1197},
-            {'>', 25137},
-        };
+        private static readonly Dictionary<char, int> Points = new() { {')', 3}, {']', 57}, {'}', 1197}, {'>', 25137} };
 
         public ParseException(char expect, char actual) : base(
             $"Expected '{expect}', but found '{actual}' instead. Points {Points[actual]}")
