@@ -15,11 +15,11 @@ namespace Advent2021
 
     public record Movement(Direction Direction, int Steps);
     
-    public class Day2
+    public class Day02
     {
         private readonly string[] _movements;
 
-        public Day2()
+        public Day02()
         {
             _movements = File.ReadAllLines(Path.Join("Files", "day2.txt"));
         }

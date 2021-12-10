@@ -11,7 +11,7 @@ using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
-    public class Day6
+    public class Day06
     {
         [Benchmark]
         public void E1()

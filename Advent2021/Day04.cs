@@ -47,7 +47,7 @@ namespace Advent2021
         public int Unmarked(IImmutableList<int> val) => Rows.Select(r => r.Unmarked(val)).Sum();
     }
     
-    public class Day4
+    public class Day04
     {
         public void E1()
         { 

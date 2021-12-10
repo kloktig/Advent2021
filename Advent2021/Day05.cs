@@ -8,7 +8,7 @@ using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
-    public class Day5
+    public class Day05
     {
         private readonly ImmutableList<Line> _lines;
 
@@ -62,7 +62,7 @@ namespace Advent2021
             }
         }
 
-        public Day5()
+        public Day05()
         {
             var strings = File.ReadAllLines(Path.Join("Files", "day5.txt"));
             _lines = strings.Select(Line.Parse).ToImmutableList();

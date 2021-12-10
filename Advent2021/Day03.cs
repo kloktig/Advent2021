@@ -4,12 +4,11 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
-    public class Day3
+    public class Day03
     {
         private ImmutableList<string> _bitsStringsMax;
         private ImmutableList<string> _bitsStringsMin;
@@ -56,7 +55,7 @@ namespace Advent2021
             Debug.Assert(prod == 903810);
         }
 
-        public Day3()
+        public Day03()
         {
             _bitsStringsMax = File.ReadAllLines(Path.Join("Files", "day3.txt")).ToImmutableList();
             _bitsStringsMin = _bitsStringsMax.ToImmutableList();

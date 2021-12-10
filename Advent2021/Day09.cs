@@ -10,7 +10,7 @@ using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
-    public class Day9
+    public class Day09
     {
         record Point(int X, int Y);
 
