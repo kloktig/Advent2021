@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using BenchmarkDotNet.Attributes;
 
 namespace Advent2021
 {
@@ -33,15 +35,23 @@ namespace Advent2021
 
         private readonly ImmutableList<string> _lines = File.ReadAllLines(Path.Join("Files", "day12.txt")).ToImmutableList();
 
-        private HashSet<List<string>> paths = new();
+        private HashSet<List<string>> paths;
 
+        [Benchmark]
         public void E1()
         {
+            paths = new HashSet<List<string>>();
             var caves = GetCaves();
             var visited = new Dictionary<Cave, int>();
             var path = new Stack<Cave>();
-            Search(caves["start"], visited, path);
-            Console.WriteLine("Count is: " + paths.Count);
+            var pathSmallCount = new Dictionary<Cave, int>();
+            foreach (var cave in caves.Values)
+            {
+                pathSmallCount[cave] = 0;
+                visited[cave] = 0;
+            }
+            Search(caves["start"], visited, path, pathSmallCount);
+            Debug.Assert(paths.Count == 74222);
         }
 
         private Dictionary<string, Cave> GetCaves()
@@ -74,11 +84,13 @@ namespace Advent2021
             return caves;
         }
         
-        void Search(Cave from, Dictionary<Cave, int> visited, Stack<Cave> path)
+        void Search(Cave from, Dictionary<Cave, int> visited, Stack<Cave> path, Dictionary<Cave, int> pathSmallCount)
         {
-            AddOrIncrement(from, visited);
-
+            visited[from]++;
+                
             path.Push(from);
+            if (from.Type == CaveType.Small) 
+                pathSmallCount[from]++;
 
             if (from.Type == CaveType.End)
             {
@@ -89,28 +101,22 @@ namespace Advent2021
                 foreach (var cave in from.ConnectedTo)
                 {
                     var canGetValue = visited.TryGetValue(cave, out var result);
-                    var smallCount = path.Where(c => c.Type == CaveType.Small).GroupBy(c => c.Id).Select(g => g.Count()).ToImmutableList();
-                    if (smallCount.Count(i => i > 1) >= 2) 
+                    var count = pathSmallCount.Values.Count(i => i > 1);
+                    if (count >= 2) 
                         continue;
                     
-                    var cnt = smallCount.Any(i => i > 1) ? 1 : 2;
+                    var cnt = count < 1 ? 2 : 1;
                     var visitSmall = cave.Type == CaveType.Small && result < cnt; ;
                     if (cave.Type is not (CaveType.Small or CaveType.Start) || !canGetValue || visitSmall)
                     {
-                        Search(cave, visited, path);
+                        Search(cave, visited, path, pathSmallCount);
                     }
                 }
             }
-            path.TryPop(out _);
+            path.Pop();
             visited[from] = 0;
-        }
-
-        private static void AddOrIncrement(Cave cave, Dictionary<Cave, int> visited)
-        {
-            if (visited.ContainsKey(cave))
-                visited[cave]++;
-            else
-                visited[cave] = 1;
+            if (from.Type == CaveType.Small) 
+                pathSmallCount[from]--;
         }
     }
 }
