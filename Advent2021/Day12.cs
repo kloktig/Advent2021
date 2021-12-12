@@ -25,26 +25,30 @@ namespace Advent2021
 
         record Cave(string Id, List<Cave> ConnectedTo, CaveType Type)
         {
-            private int _callCount = 0;
-            
             public override string ToString()
             {
                 return $"{Id}({Type}) => [{ConnectedTo.Select(c => c.Id).ToStr()}]";
             }
-
-            public void Reset() => _callCount = 0;
-            public bool CanCall() => !(Type == CaveType.Small && _callCount > 1);
-            public void Call() => _callCount++;
         };
 
-        private IList<string> lines = File.ReadAllLines(Path.Join("Files", "day12.txt"));
-            
+        private readonly ImmutableList<string> _lines = File.ReadAllLines(Path.Join("Files", "day12.txt")).ToImmutableList();
+
+        private HashSet<List<string>> paths = new();
 
         public void E1()
         {
+            var caves = GetCaves();
+            var visited = new Dictionary<Cave, int>();
+            var path = new Stack<Cave>();
+            Search(caves["start"], visited, path);
+            Console.WriteLine("Count is: " + paths.Count);
+        }
+
+        private Dictionary<string, Cave> GetCaves()
+        {
             var caves = new Dictionary<string, Cave>();
-            
-            foreach (var line in lines)
+
+            foreach (var line in _lines)
             {
                 var spl = line.Split("-");
                 var first = spl[0];
@@ -67,49 +71,46 @@ namespace Advent2021
                 cave2.ConnectedTo.Add(cave1);
             }
 
-            var visited = new Dictionary<string, int>();
-            var path = new Stack<Cave>();
-
-        
-            Print(caves["start"], visited, path);
-            Console.WriteLine("Count is: " + count);
+            return caves;
         }
-
-        private int count = 0;
-        void Print(Cave from, Dictionary<string, int> visited, Stack<Cave> path)
+        
+        void Search(Cave from, Dictionary<Cave, int> visited, Stack<Cave> path)
         {
-            if (visited.ContainsKey(from.Id))
-                visited[from.Id]++;
-            else
-                visited[from.Id] = 1;
+            AddOrIncrement(from, visited);
 
             path.Push(from);
 
             if (from.Type == CaveType.End)
             {
-                foreach (var cave in path)
-                {
-                    Console.Write(cave.Id+ " ");
-                }
-
-                count++;
-                Console.Write("\n");
+                paths.Add(path.Select(p => p.Id).ToList());
             }
             else
             {
                 foreach (var cave in from.ConnectedTo)
                 {
-                    var canGetValue = visited.TryGetValue(cave.Id, out var result);
-                    var smallVisited = cave.Type == CaveType.Small && result < 1;
-                    if (!canGetValue || smallVisited || cave.Type is not (CaveType.Small or CaveType.Start))
+                    var canGetValue = visited.TryGetValue(cave, out var result);
+                    var smallCount = path.Where(c => c.Type == CaveType.Small).GroupBy(c => c.Id).Select(g => g.Count()).ToImmutableList();
+                    if (smallCount.Count(i => i > 1) >= 2) 
+                        continue;
+                    
+                    var cnt = smallCount.Any(i => i > 1) ? 1 : 2;
+                    var visitSmall = cave.Type == CaveType.Small && result < cnt; ;
+                    if (cave.Type is not (CaveType.Small or CaveType.Start) || !canGetValue || visitSmall)
                     {
-                        Print(cave, visited, path);
+                        Search(cave, visited, path);
                     }
                 }
             }
-           
-            path.TryPop(out var res);
-            visited[from.Id] = 0;
+            path.TryPop(out _);
+            visited[from] = 0;
+        }
+
+        private static void AddOrIncrement(Cave cave, Dictionary<Cave, int> visited)
+        {
+            if (visited.ContainsKey(cave))
+                visited[cave]++;
+            else
+                visited[cave] = 1;
         }
     }
 }
