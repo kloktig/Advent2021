@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
@@ -11,34 +14,40 @@ namespace Advent2021
     {
         record Line(bool IsVertical, int N);
 
+        record Point(int X, int Y);
+
+
         record Paper(bool[][] Points)
         {
             public int Height { get; } = Points.Length;
+
+            public ImmutableList<int> HeightRange { get; } = Enumerable.Range(0, Points.Length).ToImmutableList();
+
             public int Width { get; } = Points.First().Length;
+
+            public ImmutableList<int> WidthRange { get; } =
+                Enumerable.Range(0, Points.First().Length).ToImmutableList();
 
             public Paper Fold(Line line)
             {
                 var (isVertical, n) = line;
-                
+
                 if (isVertical)
                 {
                     var newWidth = Math.Max(Width - n, n) - 1;
                     var newPoints = new bool[Height][];
 
-                    for (var y = 0; y < Height; y++)
+                    HeightRange.ForEach(y =>
                     {
                         newPoints[y] = new bool[newWidth];
-                        var xit = 0;
-                        for (var x = 0; x < newWidth; x++)
-                            newPoints[y][x] = Points[y][xit++];
-
-                        xit++;
-                        for (var x = newWidth - 1; x >= 0; x--)
+                        WidthRange.ForEach(x =>
                         {
-                            newPoints[y][x] = newPoints[y][x] || Points[y][xit];
-                            xit++;
-                        }
-                    }
+                            if (x < newWidth)
+                                newPoints[y][x] = Points[y][x];
+                            else if (x > newWidth)
+                                newPoints[y][Width - x - 1] = newPoints[y][Width - x - 1] || Points[y][x];
+                        });
+                    });
 
                     return new(newPoints);
                 }
@@ -47,85 +56,87 @@ namespace Advent2021
                     var newHeight = Math.Max(Height - n, n) - 1;
                     var newPoints = new bool[newHeight][];
 
-                    for (var y = 0; y < newHeight; y++)
+                    HeightRange.ForEach(y =>
                     {
-                        newPoints[y] = new bool[Width];
-                        for (var x = 0; x < Width; x++)
-                            newPoints[y][x] = Points[y][x];
-                    }
+                        if (y < newHeight)
+                            newPoints[y] = new bool[Width];
 
-                    var h = Math.Abs(newHeight - Height) - 1;
-                    for (var y = 0; y < h; y++)
-                    for (var x = 0; x < Width; x++)
-                        newPoints[y][x] = newPoints[y][x] || Points[Height - y - 1][x];
+                        WidthRange.ForEach(x =>
+                        {
+                            if (y < newHeight)
+                                newPoints[y][x] = Points[y][x];
+                            else if (y > newHeight)
+                                newPoints[Height - y - 1][x] = newPoints[Height - y - 1][x] || Points[y][x];
+                        });
+                    });
 
                     return new(newPoints);
                 }
             }
 
-            public override string ToString()
-            {
-                var str = "";
-                for (var y = 0; y < Height; y++)
-                {
-                    for (var x = 0; x < Width; x++)
-                    {
-                        str += Points[y][x] ? "#" : "-";
-                    }
-
-                    str += "\n";
-                }
-
-                return str;
-            }
+            public override string ToString() =>
+                HeightRange.Aggregate("", (s, y) =>
+                    s + WidthRange.Aggregate("\n", (str, x) =>
+                        str + (Points[y][x] ? "#" : "-")));
 
             public void PrintUx()
             {
-                var table = new Table().Centered().HideHeaders();
-                table.Border(TableBorder.None);
-                table.AddColumns(Enumerable.Range(0, Width).Select(n => n.ToString()).ToArray());
-                for (var y = 0; y < Height; y++)
+                var table = new Table()
+                    .Centered()
+                    .HideHeaders()
+                    .Border(TableBorder.None)
+                    .AddColumns(Enumerable.Range(0, Width).Select(n => n.ToString()).ToArray());
+
+                table.Columns.ToList()
+                    .ForEach(tableColumn =>
+                        tableColumn
+                            .Padding(0, 0)
+                            .Alignment(Justify.Left)
+                            .Width(1));
+
+                HeightRange.ForEach(y =>
                 {
                     table.AddEmptyRow();
-                    for (var x = 0; x < Width; x++)
+                    WidthRange.ForEach(x =>
                     {
                         if (Points[y][x])
-                        {
-                            table.UpdateCell(y, x, new Markup("[red on red]#[/]"));
-                        }
-                    }
-                }
+                            table.UpdateCell(y, x, new Markup("[red on red]M[/]"));
+                    });
+                });
+                
+                table.Collapse();
                 AnsiConsole.Write(table);
-
             }
-            
         }
 
-        private List<string> lines = File.ReadAllLines(Path.Join("Files", "day13.txt"))
-            .Where(l => l.Contains(','))
-            .ToList();
+
+        private static readonly ImmutableList<string> LinesFromFile =
+            File.ReadAllLines(Path.Join("Files", "day13.txt")).ToImmutableList();
+
+        private readonly ImmutableList<Point> _points = LinesFromFile.Where(l => l.Contains(',')).Select(line =>
+        {
+            var spl = line.Split(",");
+            return new Point(int.Parse(spl[0]), int.Parse(spl[1]));
+        }).ToImmutableList();
+
+        private ImmutableList<Line> _lines = LinesFromFile.Where(l => l.Contains('='))
+            .Select(l =>
+            {
+                var spl = l.Split("=");
+                return new Line(spl[0].EndsWith("x"), int.Parse(spl[1]));
+            })
+            .ToImmutableList();
 
         private readonly Paper _paper;
 
         public Day13()
         {
-            List<(int x, int y)> ps = lines.Select(line =>
-            {
-                var spl = line.Split(",");
-                return (int.Parse(spl[0]), int.Parse(spl[1]));
-            }).ToList();
-
-            var height = ps.Max(p => p.y) + 1;
-            var width = ps.Max(p => p.x) + 1;
-
+            var height = _points.Max(p => p.Y) + 1;
+            var width = _points.Max(p => p.X) + 1;
             var points = new bool[height][];
-            for (var y = 0; y < height; y++)
-            {
-                points[y] = new bool[width];
-                for (var x = 0; x < width; x++)
-                    if (ps.Any(p => p.Item1 == x && p.Item2 == y))
-                        points[y][x] = true;
-            }
+
+            Enumerable.Range(0, height).ToImmutableList().ForEach(y => points[y] = new bool[width]);
+            _points.ForEach(point => points[point.Y][point.X] = true);
 
             _paper = new Paper(points);
         }
@@ -133,32 +144,11 @@ namespace Advent2021
         [Benchmark]
         public void E1()
         {
-            var allLines = new List<Line>
-            {
-                new(true, 655),
-                new(false, 447),
-                new(true, 327),
-                new(false, 223),
-                new(true, 163),
-                new(false, 111),
-                new(true, 81),
-                new(false, 55),
-                new(true, 40),
-                new(false, 27),
-                new(false, 13),
-                new(false, 6)
-            };
+            var paper = _lines.Aggregate(_paper, (current, line) => current.Fold(line));
+            Debug.Assert(92 == paper.Points.SelectMany(pp => pp.Where(p => p)).Count());
+            ;
 
-            var paper = _paper;
-
-            foreach (var line in allLines)
-            {
-                paper = paper.Fold(line);
-            }
-
-            Console.WriteLine(paper);
-            Console.WriteLine(paper.Points.SelectMany(pp => pp.Where(p => p)).Count());
-
+            //Console.WriteLine(paper);
             paper.PrintUx();
         }
     }
