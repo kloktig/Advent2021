@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
+using Spectre.Console;
 
 namespace Advent2021
 {
@@ -77,6 +78,27 @@ namespace Advent2021
 
                 return str;
             }
+
+            public void PrintUx()
+            {
+                var table = new Table().Centered().HideHeaders();
+                table.Border(TableBorder.None);
+                table.AddColumns(Enumerable.Range(0, Width).Select(n => n.ToString()).ToArray());
+                for (var y = 0; y < Height; y++)
+                {
+                    table.AddEmptyRow();
+                    for (var x = 0; x < Width; x++)
+                    {
+                        if (Points[y][x])
+                        {
+                            table.UpdateCell(y, x, new Markup("[red on red]#[/]"));
+                        }
+                    }
+                }
+                AnsiConsole.Write(table);
+
+            }
+            
         }
 
         private List<string> lines = File.ReadAllLines(Path.Join("Files", "day13.txt"))
@@ -136,6 +158,8 @@ namespace Advent2021
 
             Console.WriteLine(paper);
             Console.WriteLine(paper.Points.SelectMany(pp => pp.Where(p => p)).Count());
+
+            paper.PrintUx();
         }
     }
 }
