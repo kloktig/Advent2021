@@ -146,7 +146,6 @@ namespace Advent2021
         {
             var paper = _lines.Aggregate(_paper, (current, line) => current.Fold(line));
             Debug.Assert(92 == paper.Points.SelectMany(pp => pp.Where(p => p)).Count());
-            ;
 
             //Console.WriteLine(paper);
             paper.PrintUx();

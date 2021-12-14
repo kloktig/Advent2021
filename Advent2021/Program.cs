@@ -1,6 +1,4 @@
-﻿using BenchmarkDotNet.Running;
-
-namespace Advent2021
+﻿namespace Advent2021
 {
     class Program
     {
@@ -10,6 +8,5 @@ namespace Advent2021
             new Day14_2().E1();
             return 0;
         }
-        
     }
 }

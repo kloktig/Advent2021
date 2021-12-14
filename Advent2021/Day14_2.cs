@@ -1,90 +1,127 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
-using Spectre.Console;
 
-namespace Advent2021
+namespace Advent2021;
+
+public record Node(char Letter)
 {
-    public class Day14_2
+    public Node Left;
+    public Node Right;
+
+    public long[] OldCounts = new long[26];
+    public long[] Counts = new long[26];
+}
+
+public record LetterPair(char First, char Second)
+{
+    public static LetterPair From(string str) => new(str[0], str[1]);
+};
+
+public class PolymerCountTree : Dictionary<LetterPair, Node>
+{
+    private readonly Dictionary<LetterPair, char> _rules;
+    private readonly string _template;
+    readonly ImmutableList<int> _lettersRange = Enumerable.Range(0, 26).ToImmutableList();
+
+    public PolymerCountTree(Dictionary<LetterPair, char> rules, string template)
     {
-        private readonly ImmutableList<string> _lines;
+        _rules = rules;
+        _template = template;
+        Init();
+    }
 
-        public Day14_2()
+    private void Init()
+    {
+        InitFromRules();
+        PopulateFromRules();
+    }
+
+    private void PopulateFromRules()
+    {
+        foreach (var (letterPair, letter) in _rules)
         {
-            _lines = File.ReadAllLines(Path.Join("Files", "day14_test.txt")).ToImmutableList();
+            this[letterPair].Left = this[new LetterPair(letterPair.First, letter)];
+            this[letterPair].Right = this[new LetterPair(letter, letterPair.Second)];
+            this[letterPair].OldCounts[AsIndex(letter)]++;
+        }
+    }
+
+    private int AsIndex(char ch) => ch - 'A';
+
+    private void InitFromRules()
+    {
+        foreach (var (letterPair, letter) in _rules)
+        {
+            this[letterPair] = new Node(letter);
+        }
+    }
+
+    public long[] Aggregate()
+    {
+        var agg = new long[26];
+        for (var i = 0; i < _template.Length - 1; i++)
+        {
+            agg[AsIndex(_template[i])]++;
+            var node = this[LetterPair.From(_template.Substring(i, 2))];
+            _lettersRange.ForEach(letterIdx => { agg[letterIdx] += node.OldCounts[letterIdx]; });
         }
 
-        [Benchmark]
-        public void E1()
+        agg[AsIndex(_template.Last())]++;
+        return agg;
+    }
+
+    public void UpdateBookKeeping()
+    {
+        foreach (var (_, node) in this)
         {
-            var elements = new HashSet<char>();
-
-            foreach (var c in _lines)
+            _lettersRange.ForEach(letterIdx =>
             {
-                if (string.IsNullOrEmpty(c))
-                    continue;
-                var temp = c.Replace(" -> ", "");
-                foreach (var c1 in temp.ToImmutableList())
-                {
-                    elements.Add(c1);
-                }
-            }
-            Console.WriteLine(elements.ToStr());
-            var dict = elements.ToDictionary(e => e, c => 0);
-            
-            var rules = _lines.Skip(2).Select(line =>
-            {
-                var spl = line.Split(" -> ");
-                var s = spl[0].ToList();
-                var newPairs = new List<string> {s[0] + spl[1], s[1] + spl[1]};
-                return (spl[0], newPairs);
-            }).ToImmutableDictionary(tuple => tuple.Item1, tuple => tuple.Item2);
-
-            //Console.WriteLine(rules.Select(r => r.Key + ": " + r.Value.ToStr()).ToStr("\n"));
-            
-            var dublicateCheckFirst = rules.Keys.ToDictionary(key => key, key => key[0]);
-            var dublicateCheckLast = rules.Keys.ToDictionary(key => key, key => key[1]);
-            
-            var counts = rules.ToDictionary(rule => rule.Key, pair => 0);
-            counts["NN"] = 1;
-            counts["NC"] = 1;
-            counts["CB"] = 1;
-            var keys = new List<string>() {"NN", "NC", "CB"}; 
-            for (int step = 0; step < 1; step++)
-            {                    
-                var last = '-';
-                foreach (var p in keys)
-                {
-                    var count = counts[p]; 
-                    var insert = rules[p];
-                    foreach (var pair in insert)
-                    {
-                        //var first = dublicateCheckFirst[pair];
-                        /*if (last == first)
-                        { 
-                            counts[$"{first}{last}"]-= counts[p];
-                        }*/
-                        counts[pair]+= counts[p];
-                        //last = dublicateCheckLast[pair];
-                    }
-                    counts[p] -= count ;
-                }
-                
-                Console.WriteLine(step + ",");
-            }
-            
-            foreach (var (c, count) in counts.Where(c =>c.Value > 0))
-            {
-                Console.WriteLine($"{c}: {count}");
-            }
-            
-            Console.WriteLine(counts.Sum(l => l.Value));
-            
+                node.OldCounts[letterIdx] = node.Counts[letterIdx];
+                node.Counts[letterIdx] = 0;
+            });
         }
+    }
+
+    public void UpdateCounts()
+    {
+        foreach (var (_, node) in this)
+        {
+            node.Counts[AsIndex(node.Letter)]++;
+            _lettersRange.ForEach(ch =>
+            {
+                node.Counts[ch] += node.Left.OldCounts[ch];
+                node.Counts[ch] += node.Right.OldCounts[ch];
+            });
+        }
+    }
+}
+
+public class Day14_2
+{
+    [Benchmark]
+    public void E1()
+    {
+        var lines = File.ReadAllLines(Path.Join("Files", "day14.txt")).ToImmutableList();
+
+        var rules = lines.Skip(2).ToDictionary(LetterPair.From, line => line.Split(" -> ")[1].First());
+        var template = lines.First();
+
+        var tree = new PolymerCountTree(rules, template);
+
+        for (var n = 1; n < 40; n++)
+        {
+            tree.UpdateCounts();
+            tree.UpdateBookKeeping();
+        }
+
+        var agg = tree.Aggregate();
+
+        Console.WriteLine(agg.Max() - agg.Where(c => c > 0L).Min());
+        Console.WriteLine(agg.Select((v, i) => $"{char.ConvertFromUtf32(i + 'A')}: {v}").Where(str => str.Length > 4)
+            .ToStr("\n"));
     }
 }
