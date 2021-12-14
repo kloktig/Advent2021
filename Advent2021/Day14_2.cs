@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using BenchmarkDotNet.Attributes;
@@ -12,8 +13,8 @@ public record Node(char Letter)
     public Node Left;
     public Node Right;
 
-    public long[] OldCounts = new long[26];
-    public long[] Counts = new long[26];
+    public readonly long[] PreviousCounts = new long[26];
+    public readonly long[] CurrentCounts = new long[26];
 }
 
 public record LetterPair(char First, char Second)
@@ -25,7 +26,7 @@ public class PolymerCountTree : Dictionary<LetterPair, Node>
 {
     private readonly Dictionary<LetterPair, char> _rules;
     private readonly string _template;
-    readonly ImmutableList<int> _lettersRange = Enumerable.Range(0, 26).ToImmutableList();
+    private readonly ImmutableList<int> _lettersRange = Enumerable.Range(0, 26).ToImmutableList();
 
     public PolymerCountTree(Dictionary<LetterPair, char> rules, string template)
     {
@@ -46,7 +47,7 @@ public class PolymerCountTree : Dictionary<LetterPair, Node>
         {
             this[letterPair].Left = this[new LetterPair(letterPair.First, letter)];
             this[letterPair].Right = this[new LetterPair(letter, letterPair.Second)];
-            this[letterPair].OldCounts[AsIndex(letter)]++;
+            this[letterPair].PreviousCounts[AsIndex(letter)]++;
         }
     }
 
@@ -65,36 +66,47 @@ public class PolymerCountTree : Dictionary<LetterPair, Node>
         var agg = new long[26];
         for (var i = 0; i < _template.Length - 1; i++)
         {
-            agg[AsIndex(_template[i])]++;
-            var node = this[LetterPair.From(_template.Substring(i, 2))];
-            _lettersRange.ForEach(letterIdx => { agg[letterIdx] += node.OldCounts[letterIdx]; });
+            var letterPair = LetterPair.From(_template.Substring(i, 2));
+            var node = this[letterPair];
+             _lettersRange.ForEach(idx => { agg[idx] += node.PreviousCounts[idx]; });
         }
 
         agg[AsIndex(_template.Last())]++;
         return agg;
     }
 
+    public string AggregateStr()
+    {
+        var aggregate = Aggregate();
+        return aggregate
+            .OrderByDescending(a => a)
+            .Select((v, i) => $"{char.ConvertFromUtf32(i + 'A')}: {v}")
+            .Where(str => str.Length > 4)
+            .ToStr(", ") + $" \n ===> {aggregate.Max()} - {aggregate.Where(c => c > 0L).Min()} = {aggregate.Max() - aggregate.Where(c => c > 0L).Min()}\n";
+    }
+
+    
     public void UpdateBookKeeping()
     {
-        foreach (var (_, node) in this)
+        foreach (var node in Values)
         {
             _lettersRange.ForEach(letterIdx =>
             {
-                node.OldCounts[letterIdx] = node.Counts[letterIdx];
-                node.Counts[letterIdx] = 0;
+                node.PreviousCounts[letterIdx] = node.CurrentCounts[letterIdx];
+                node.CurrentCounts[letterIdx] = 0;
             });
         }
     }
 
     public void UpdateCounts()
     {
-        foreach (var (_, node) in this)
+        foreach (var node in Values)
         {
-            node.Counts[AsIndex(node.Letter)]++;
+            node.CurrentCounts[AsIndex(node.Letter)]++;
             _lettersRange.ForEach(ch =>
             {
-                node.Counts[ch] += node.Left.OldCounts[ch];
-                node.Counts[ch] += node.Right.OldCounts[ch];
+                node.CurrentCounts[ch] += node.Left.PreviousCounts[ch];
+                node.CurrentCounts[ch] += node.Right.PreviousCounts[ch];
             });
         }
     }
@@ -114,14 +126,10 @@ public class Day14_2
 
         for (var n = 1; n < 40; n++)
         {
+            Console.WriteLine($"Step: {n + 1}");
             tree.UpdateCounts();
             tree.UpdateBookKeeping();
+            Console.WriteLine(tree.AggregateStr());
         }
-
-        var agg = tree.Aggregate();
-
-        Console.WriteLine(agg.Max() - agg.Where(c => c > 0L).Min());
-        Console.WriteLine(agg.Select((v, i) => $"{char.ConvertFromUtf32(i + 'A')}: {v}").Where(str => str.Length > 4)
-            .ToStr("\n"));
     }
 }
