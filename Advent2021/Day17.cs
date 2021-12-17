@@ -3,7 +3,9 @@ using System.Collections.Generic;
 namespace Advent2021
 {
     public record Area(int Left, int Right, int Bottom, int Top);
+    
     public record Velocity(int Dx, int Dy);
+    
     public record Position(int X, int Y);
 
     public record Result(int Highest, int Hits);
