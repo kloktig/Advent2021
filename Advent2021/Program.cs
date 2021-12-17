@@ -1,4 +1,4 @@
-﻿using BenchmarkDotNet.Running;
+﻿using System;
 
 namespace Advent2021
 {
@@ -6,11 +6,13 @@ namespace Advent2021
     {
         static int Main()
         {
-            new Day16().E1();
-            
-            
-            
-            return 0;
+           var target = new Area(138, 184, -125, -71);
+           var (highest, hits) = new Day17(target).Run();
+           
+           Console.WriteLine($"Hits: {hits}");
+           Console.WriteLine($"highest : {highest}"); 
+           
+           return 0;
         }
     }
 }
