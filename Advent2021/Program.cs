@@ -7,7 +7,7 @@ class Program
 {
     static int Main()
     {
-        new Day18().Run();   
+        new Day20().Run();
         return 0;
     }
 }
