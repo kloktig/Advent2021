@@ -13,17 +13,21 @@ namespace Advent2021
             var p1Pos = 10;
             var p2Pos = 4;
             var w1Count = 0L;
+            var w2Count = 0L;
 
             for (int i = 1; i < 4; i++)
             {
-                w1Count += Play(new GameState(p1Pos - 1, 0, p2Pos - 1, 0, Turn.Player1, 1, i));
+                var (w1CountTemp, w2CountTemp) = Play(new GameState(p1Pos - 1, 0, p2Pos - 1, 0, Turn.Player1, 1, i));
+                w1Count += w1CountTemp;
+                w2Count += w2CountTemp;
             }
 
             Console.WriteLine("Completed after " + watch.Elapsed);
             Console.WriteLine(w1Count);
+            Console.WriteLine(w2Count);
         }
 
-        private Func<GameState, long> _functionCache;
+        private Func<GameState, (long, long)> _functionCache;
 
         public enum Turn
         {
@@ -42,7 +46,7 @@ namespace Advent2021
             public Turn Turn { get; set; } = Turn;
         }
 
-        public long Play(GameState value)
+        public (long, long) Play(GameState value)
         {
             GameState s = value;
             _functionCache ??= ThreadSafeMemoize(gameState =>
@@ -57,14 +61,14 @@ namespace Advent2021
                         {
                             state.Pos1 = (state.Pos1 + state.Value) % 10;
                             state.Score1 = state.Score1 + state.Pos1 + 1;
-                            if (state.Score1 >= 21) return 1L;
+                            if (state.Score1 >= 21) return (1L, 0L);
                             break;
                         }
                         case Turn.Player2:
                         {
                             state.Pos2 = (state.Pos2 + state.Value) % 10;
                             state.Score2 = state.Score2 + state.Pos2 + 1;
-                            if (state.Score2 >= 21) return 0L;
+                            if (state.Score2 >= 21) return (0L, 1L);
                             break;
                         }
                     }
@@ -78,15 +82,16 @@ namespace Advent2021
                 {
                     NumberOfRolls = state.NumberOfRolls + 1,
                     Value = state.Value + i
-                })).Sum(a => a);
+                })).Aggregate((0L, 0L), (agg, v) => (agg.Item1+v.Item1, agg.Item2+v.Item2));
             });
             return _functionCache(s);
         }
 
+
         // Thanks to https://trenki2.github.io/blog/2018/12/31/memoization-in-csharp/
-        public static Func<GameState, long> ThreadSafeMemoize(Func<GameState, long> func)
+        public static Func<GameState, (long, long)> ThreadSafeMemoize(Func<GameState, (long, long)> func)
         {
-            var cache = new ConcurrentDictionary<GameState, long>();
+            var cache = new ConcurrentDictionary<GameState, (long, long)>();
             return argument => cache.GetOrAdd(argument, func);
         }
     }
