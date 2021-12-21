@@ -58,8 +58,7 @@ namespace Advent2021
             var c = 0;
             var p = new List<Point>();
             p.Add(current);
-            var i = 0;
-            
+
             while (start != current)
             {
                 Console.Write(current + "=>");

@@ -65,7 +65,6 @@ namespace Advent2021
             
             Console.WriteLine(current.Length);
             var currList = current.ToImmutableList();
-            var acc = 0;
             var countList = new List<(char, long)>();
             foreach (var c in elements)
             {
