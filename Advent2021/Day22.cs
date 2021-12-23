@@ -8,89 +8,84 @@ namespace Advent2021
 {
     public class Day22
     {
-        record Cube(int X, int Y, int Z);
-
-        enum CubeType
+        record Range(int From, int To)
         {
-            On,
-            Off,
-            Outside
-        }
-
-        class CubeSet : HashSet<Cube>
-        {
-            public CubeType CubeType { get; private set; }
-
-            public static CubeSet Create(string line)
+            public static Range Create(string str)
             {
-                CubeSet cubeSet = new CubeSet();
-                string[] spl = line.Replace("on", "").Replace("off", "").TrimStart().Split(",");
-                var xR = spl[0].Substring(2).Split("..").Select(int.Parse).ToArray();
-                var yR = spl[1].Substring(2).Split("..").Select(int.Parse).ToArray();
-                var zR = spl[2].Substring(2).Split("..").Select(int.Parse).ToArray();
-
-               // if (CheckIfInvalid(xR)) return new CubeSet {CubeType = CubeType.Outside};
-               // if (CheckIfInvalid(yR)) return new CubeSet {CubeType = CubeType.Outside};
-               // if (CheckIfInvalid(zR)) return new CubeSet {CubeType = CubeType.Outside};
-
-              var xMin = xR[0]; // Math.Max(-50, xR[0]);
-              var yMin = yR[0]; // Math.Max(-50, yR[0]);
-              var zMin = zR[0]; // Math.Max(-50, zR[0]);
-
-              var xMax = xR[1]; //Math.Min(50, xR[1]);
-              var yMax = yR[1]; // Math.Min(50, yR[1]);
-              var zMax = zR[1]; //Math.Min(50, zR[1]);
-
-              for (int x = xMin; x <= xMax; x++)
-              {
-                  for (int y = yMin; y <= yMax; y++)
-                  {
-                      for (int z = zMin; z <= zMax; z++)
-                      {
-                          cubeSet.Add(new Cube(x, y, z));
-                      }
-                  }
-              }
-
-                cubeSet.CubeType = line[2] == 'f' ? CubeType.Off : CubeType.On;
-                Console.WriteLine($"Done with: {line}");
-                return cubeSet;
+                var spl = str.Split("..");
+                return new Range(int.Parse(spl[0].Split("=")[1]), int.Parse(spl[1]));
             }
-
-            private static bool CheckIfInvalid(int[] range)
-            {
-                return range[1] < -50 || range[0] > 50;
-            }
-
-            public override string ToString()
-            {
-                return $"{CubeType}\n{this.ToStr("\n")}";
-            }
+            public override string ToString() => $"{From}..{To}";
+            public readonly long Length = Math.Abs(From - To) + 1;
         };
 
-        private HashSet<Cube> cubes = new();
+        record Cube(Range X, Range Y, Range Z, bool Plus)
+        {
+            private readonly Dictionary<Axis, Range> _ranges = new() { { Axis.X, X }, { Axis.Y, Y }, { Axis.Z, Z } };
+
+            public static Cube Create(String line)
+            {
+                var spl1 = line.Split(" ");
+                var spl2 = spl1[1].Trim().Split(",");
+                return new Cube(Range.Create(spl2[0]), Range.Create(spl2[1]), Range.Create(spl2[2]), spl1[0][1] != 'f');
+            }
+
+            enum Axis
+            {
+                X,
+                Y,
+                Z
+            }
+
+            public Cube Intersect(Cube other, bool plus)
+            {
+                var temp = new Dictionary<Axis, Range> { { Axis.X, null }, { Axis.Y, null }, { Axis.Z, null } };
+
+                foreach (var axis in Enum.GetValues<Axis>())
+                {
+                    var one = _ranges[axis];
+                    var two = other._ranges[axis];
+
+                    if (one.From > two.To || two.From > one.To)
+                        return null;
+
+                    // Saw this min/max-trick here: https://stackoverflow.com/questions/22456517/algorithm-for-finding-the-segment-overlapping-two-collinear-segments
+                    // This simplified my solution a lot - I was down a route of many if-statements
+                    temp[axis] = new Range(Math.Max(one.From, two.From), Math.Min(one.To, two.To));
+                }
+
+                return new Cube(temp[Axis.X], temp[Axis.Y], temp[Axis.Z], plus);
+            }
+
+            public long Size => X.Length * Y.Length * Z.Length;
+        }
 
         public void Do()
         {
-            var allCubes = File.ReadAllLines(Path.Join("Files", "day22_test3.txt")).Select(CubeSet.Create)
-                .ToImmutableList();
+            ImmutableList<Cube> steps = File.ReadAllLines(Path.Join("Files", "day22.txt")).Select(
+                Cube.Create).ToImmutableList();
 
-            var total = new HashSet<Cube>();
-            foreach (var cubes in allCubes)
+            var cubes = new List<Cube>();
+            var cubesToAdd = new List<Cube>();
+
+            foreach (var cube in steps)
             {
-                //   Console.WriteLine(cubes.ToStr());
-                if (cubes.CubeType == CubeType.On)
-                {
-                    total.UnionWith(cubes);
-                }
-                else if (cubes.CubeType == CubeType.Off)
-                {
-                    total.ExceptWith(cubes);
-                }
-                Console.WriteLine("Count:" + total.Count);
+                cubesToAdd.Clear();
+                if (cube.Plus) cubesToAdd.Add(cube);
+                // Trial and error showed that I was counting double. Send in minus for previously counted cubes.
+                var newCubes = cubes.Select(c => cube.Intersect(c, !c.Plus)).Where(newCube => newCube != null);
+                cubesToAdd.AddRange(newCubes);
+                cubes.AddRange(cubesToAdd);
             }
-            Console.WriteLine("Count:" + total.Count);
 
+            var sum = 0L;
+            foreach (var cube in cubes)
+            {
+                if (cube.Plus) sum += cube.Size;
+                else sum -= cube.Size;
+            }
+
+            Console.WriteLine(sum);
         }
     }
 }
